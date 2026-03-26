@@ -1,98 +1,152 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { QuickChips } from "@/src/components/QuickChips";
+import { RestaurantCard } from "@/src/components/RestaurantCard";
+import { SearchBox } from "@/src/components/SearchBox";
+import { SectionTitle } from "@/src/components/SectionTitle";
+import { useAppStore } from "@/src/store/useAppStore";
+import { colors } from "@/src/theme/colors";
+import { radius } from "@/src/theme/radius";
+import { fontSizes, fontWeights, lineHeights } from "@/src/theme/typography";
+import { Restaurant } from "@/src/types/restaurant";
+import { useCallback } from "react";
+import { FlatList, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+const getGreeting = (): { text: string; emoji: string } => {
+  const hour = new Date().getHours();
+  if (hour < 12) return { text: "Good morning", emoji: "☀️" };
+  if (hour < 17) return { text: "Good afternoon", emoji: "🌤️" };
+  return { text: "Good evening", emoji: "🌙" };
+};
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const query = useAppStore((s) => s.query);
+  const setQuery = useAppStore((s) => s.setQuery);
+  const restaurants = useAppStore((s) => s.restaurants);
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  // Stable callbacks — prevent FlatList from re-rendering items on every parent render
+  const renderItem = useCallback(
+    ({ item, index }: { item: Restaurant; index: number }) => (
+      <RestaurantCard item={item} index={index} />
+    ),
+    [],
+  );
+
+  const handleChipSelect = useCallback(
+    (value: string) => setQuery(value),
+    [setQuery],
+  );
+
+  const { text: greetText, emoji: greetEmoji } = getGreeting();
+
+  return (
+    // edges={["top"]} — tab bar handles bottom safe area itself
+    <SafeAreaView style={styles.safe} edges={["top"]}>
+      <FlatList
+        data={restaurants}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={
+          <View style={styles.header}>
+            {/* Location pill */}
+            <View style={styles.locationPill}>
+              <Text style={styles.locationDot}>📍</Text>
+              <Text style={styles.locationText}>Hoan Kiem, Hanoi</Text>
+            </View>
+
+            {/* Greeting + headline */}
+            <View style={styles.heroText}>
+              <Text style={styles.greeting}>
+                {greetText} {greetEmoji}
+              </Text>
+              <Text style={styles.headline}>
+                {"What are you\ncraving today?"}
+              </Text>
+            </View>
+
+            {/* AI search bar */}
+            <SearchBox value={query} onChangeText={setQuery} />
+
+            {/* Quick filter chips */}
+            <QuickChips onSelect={handleChipSelect} />
+
+            {/* Section header */}
+            <View style={styles.sectionRow}>
+              <SectionTitle title="AI picks for you" icon="✦" />
+              <Text style={styles.resultCount}>{restaurants.length} spots</Text>
+            </View>
+          </View>
+        }
+        renderItem={renderItem}
+        ItemSeparatorComponent={() => <View style={{ height: 14 }} />}
+        ListFooterComponent={<View style={{ height: 40 }} />}
+      />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  safe: {
+    flex: 1,
+    backgroundColor: colors.background,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  content: {
+    paddingHorizontal: 16,
+    paddingBottom: 20,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  header: {
+    gap: 18,
+    paddingTop: 16,
+    marginBottom: 4,
+  },
+
+  locationPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    alignSelf: "flex-start",
+    backgroundColor: colors.surface,
+    borderRadius: radius.full,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  locationDot: {
+    fontSize: 12,
+  },
+  locationText: {
+    fontSize: fontSizes.sm,
+    fontWeight: fontWeights.semibold,
+    color: colors.textSecondary,
+  },
+
+  heroText: {
+    gap: 6,
+  },
+  greeting: {
+    fontSize: fontSizes.base,
+    fontWeight: fontWeights.medium,
+    color: colors.textSecondary,
+    letterSpacing: 0.1,
+  },
+  headline: {
+    fontSize: fontSizes.xxxl,
+    fontWeight: fontWeights.black,
+    color: colors.textPrimary,
+    lineHeight: fontSizes.xxxl * lineHeights.tight,
+    letterSpacing: -0.5,
+  },
+
+  sectionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 6,
+  },
+  resultCount: {
+    fontSize: fontSizes.sm,
+    fontWeight: fontWeights.medium,
+    color: colors.textTertiary,
   },
 });
