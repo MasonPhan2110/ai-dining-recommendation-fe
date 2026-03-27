@@ -4,6 +4,7 @@ import { colors } from "@/src/theme/colors";
 import { radius } from "@/src/theme/radius";
 import { fontSizes, fontWeights, lineHeights } from "@/src/theme/typography";
 import { CUISINE_CONFIG } from "@/src/utils/cuisineConfig";
+import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
 import {
   Animated,
@@ -69,6 +70,7 @@ const VIBE_OPTIONS = [
 
 export default function SurveyScreen() {
   const completeSurvey = useAuthStore((s) => s.completeSurvey);
+  const router = useRouter();
 
   const [step, setStep] = useState(0);
   const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
@@ -106,6 +108,7 @@ export default function SurveyScreen() {
         vibes: selectedVibes,
       };
       completeSurvey(prefs);
+      router.replace("/(tabs)");
     }
   };
 

@@ -1,7 +1,8 @@
+import { useAuthStore } from "@/src/store/useAuthStore";
 import { colors } from "@/src/theme/colors";
 import { fontSizes, fontWeights } from "@/src/theme/typography";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Tabs } from "expo-router";
+import { Redirect, Tabs } from "expo-router";
 import { Platform } from "react-native";
 
 type IoniconName = React.ComponentProps<typeof Ionicons>["name"];
@@ -23,6 +24,12 @@ function TabIcon({
 }
 
 export default function TabsLayout() {
+  const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
+  const surveyCompleted = useAuthStore((s) => s.surveyCompleted);
+
+  if (!isLoggedIn) return <Redirect href="/login" />;
+  if (!surveyCompleted) return <Redirect href="/survey" />;
+
   return (
     <Tabs
       screenOptions={{

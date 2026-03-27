@@ -4,6 +4,7 @@ import { colors } from "@/src/theme/colors";
 import { radius } from "@/src/theme/radius";
 import { shadows } from "@/src/theme/shadows";
 import { fontSizes, fontWeights, lineHeights } from "@/src/theme/typography";
+import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -19,6 +20,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function LoginScreen() {
   const login = useAuthStore((s) => s.login);
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -35,6 +37,7 @@ export default function LoginScreen() {
     setTimeout(() => {
       setLoading(false);
       login(email.trim());
+      router.replace("/survey");
     }, 800);
   };
 
