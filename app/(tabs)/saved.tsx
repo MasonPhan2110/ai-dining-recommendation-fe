@@ -1,28 +1,34 @@
 import { RestaurantCard } from "@/src/components/RestaurantCard";
+import {
+  colors,
+  fonts,
+  fontSizes,
+  lineHeights,
+  textStyles,
+} from "@/src/config/theme";
 import { useAppStore } from "@/src/store/useAppStore";
-import { colors } from "@/src/theme/colors";
-import { fontSizes, fontWeights, lineHeights } from "@/src/theme/typography";
 import { Restaurant } from "@/src/types/restaurant";
 import { FlatList, StyleSheet, Text, View } from "react-native";
+import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 function EmptyState() {
   return (
-    <View style={styles.empty}>
-      <Text style={styles.emptyEmoji}>🔖</Text>
+    <Animated.View
+      style={styles.empty}
+      entering={FadeInUp.duration(500).delay(200)}
+    >
+      <Text style={styles.emptyEmoji}>{"\uD83D\uDD16"}</Text>
       <Text style={styles.emptyTitle}>No saved places yet</Text>
       <Text style={styles.emptyBody}>
         Tap the heart on any restaurant to save it here for later.
       </Text>
-    </View>
+    </Animated.View>
   );
 }
 
 export default function SavedScreen() {
-  const allRestaurants = useAppStore((s) => s.restaurants);
-  const savedIds = useAppStore((s) => s.savedIds);
-  // filter in component body, NOT inside the selector — selector must return a stable reference
-  const restaurants = allRestaurants.filter((r) => savedIds.includes(r.id));
+  const restaurants = useAppStore((s) => s.savedRestaurants);
 
   const renderItem = ({
     item,
@@ -34,12 +40,18 @@ export default function SavedScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.header}>
+      {/* Header with staggered entrance */}
+      <Animated.View
+        style={styles.header}
+        entering={FadeInDown.duration(400).delay(80)}
+      >
         <Text style={styles.title}>Saved</Text>
         {restaurants.length > 0 && (
           <Text style={styles.count}>{restaurants.length} places</Text>
         )}
-      </View>
+      </Animated.View>
+
+      <View style={styles.rule} />
 
       <FlatList
         data={restaurants}
@@ -47,7 +59,7 @@ export default function SavedScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         renderItem={renderItem}
-        ItemSeparatorComponent={() => <View style={{ height: 14 }} />}
+        ItemSeparatorComponent={() => <View style={{ height: 16 }} />}
         ListEmptyComponent={<EmptyState />}
         ListFooterComponent={<View style={{ height: 32 }} />}
       />
@@ -61,42 +73,45 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   header: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingHorizontal: 20,
+    paddingTop: 12,
     paddingBottom: 16,
     flexDirection: "row",
     alignItems: "baseline",
     gap: 10,
   },
   title: {
-    fontSize: fontSizes.xxl,
-    fontWeight: fontWeights.extrabold,
-    color: colors.textPrimary,
+    ...textStyles.displaySmall,
   },
   count: {
+    fontFamily: fonts.body.medium,
     fontSize: fontSizes.sm,
-    fontWeight: fontWeights.medium,
     color: colors.textTertiary,
   },
+  rule: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border,
+    marginHorizontal: 20,
+    marginBottom: 16,
+  },
   content: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
   },
   empty: {
     alignItems: "center",
-    paddingTop: 64,
-    paddingHorizontal: 32,
-    gap: 12,
+    paddingTop: 80,
+    paddingHorizontal: 40,
+    gap: 14,
   },
   emptyEmoji: {
-    fontSize: 52,
+    fontSize: 48,
   },
   emptyTitle: {
-    fontSize: fontSizes.lg,
-    fontWeight: fontWeights.bold,
-    color: colors.textPrimary,
+    ...textStyles.headingLarge,
     textAlign: "center",
   },
   emptyBody: {
+    fontFamily: fonts.body.regular,
     fontSize: fontSizes.base,
     color: colors.textSecondary,
     textAlign: "center",

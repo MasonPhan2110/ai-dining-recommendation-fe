@@ -1,4 +1,5 @@
 import { useAppStore } from "@/src/store/useAppStore";
+import { useAuthStore } from "@/src/store/useAuthStore";
 import { colors } from "@/src/theme/colors";
 import { radius } from "@/src/theme/radius";
 import { shadows } from "@/src/theme/shadows";
@@ -9,6 +10,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useRef } from "react";
 import {
   Animated,
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -26,8 +28,9 @@ export default function RestaurantDetailScreen() {
   const insets = useSafeAreaInsets();
 
   const restaurant = useAppStore((s) => s.restaurants.find((r) => r.id === id));
-  const savedIds = useAppStore((s) => s.savedIds);
+  const savedRestaurants = useAppStore((s) => s.savedRestaurants);
   const toggleSaved = useAppStore((s) => s.toggleSaved);
+  const userId = useAuthStore((s) => s.userId);
 
   // One scale drives the CTA bar save button
   const ctaScale = useRef(new Animated.Value(1)).current;
@@ -43,11 +46,11 @@ export default function RestaurantDetailScreen() {
     );
   }
 
-  const isSaved = savedIds.includes(restaurant.id);
+  const isSaved = savedRestaurants.some((r) => r.id === restaurant.id);
   const { color: accentColor, softBg, emoji } = getCuisineConfig(restaurant.cuisine);
 
   const triggerSave = (scaleAnim: Animated.Value) => {
-    toggleSaved(restaurant.id);
+    toggleSaved(restaurant.id, userId);
     Animated.sequence([
       Animated.spring(scaleAnim, {
         toValue: 1.35,
@@ -176,6 +179,10 @@ export default function RestaurantDetailScreen() {
             { backgroundColor: accentColor },
             pressed && styles.ctaPressed,
           ]}
+          onPress={() => {
+            const query = encodeURIComponent(`${restaurant.name} ${restaurant.address}`);
+            Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${query}`);
+          }}
         >
           <Ionicons name="map-outline" size={18} color="#fff" />
           <Text style={styles.ctaPrimaryText}>Open in Maps</Text>

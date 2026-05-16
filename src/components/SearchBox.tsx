@@ -1,7 +1,4 @@
-import { colors } from "@/src/theme/colors";
-import { radius } from "@/src/theme/radius";
-import { shadows } from "@/src/theme/shadows";
-import { fontSizes } from "@/src/theme/typography";
+import { colors, fonts, fontSizes, radius, shadows } from "@/src/config/theme";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRef } from "react";
 import {
@@ -22,7 +19,7 @@ export function SearchBox({ value, onChangeText }: Props) {
   const borderColor = useRef(
     borderAnim.interpolate({
       inputRange: [0, 1],
-      outputRange: [colors.border, colors.primary],
+      outputRange: [colors.border, colors.accent],
     }),
   ).current;
 
@@ -47,8 +44,8 @@ export function SearchBox({ value, onChangeText }: Props) {
       <Animated.View style={[styles.container, { borderColor }]}>
         <Ionicons
           name="search-outline"
-          size={18}
-          color={colors.textSecondary}
+          size={17}
+          color={colors.textTertiary}
           style={styles.icon}
         />
         <TextInput
@@ -66,7 +63,7 @@ export function SearchBox({ value, onChangeText }: Props) {
           <Pressable onPress={() => onChangeText("")} hitSlop={8}>
             <Ionicons
               name="close-circle"
-              size={18}
+              size={17}
               color={colors.textTertiary}
             />
           </Pressable>
@@ -79,7 +76,7 @@ export function SearchBox({ value, onChangeText }: Props) {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: colors.surface,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderRadius: radius.lg,
     paddingHorizontal: 14,
     paddingVertical: 0,
@@ -93,7 +90,8 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    height: 50,
+    height: 48,
+    fontFamily: fonts.body.regular,
     color: colors.textPrimary,
     fontSize: fontSizes.base,
   },

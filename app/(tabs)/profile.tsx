@@ -1,14 +1,32 @@
-import { colors } from "@/src/theme/colors";
-import { radius } from "@/src/theme/radius";
-import { shadows } from "@/src/theme/shadows";
-import { fontSizes, fontWeights, lineHeights } from "@/src/theme/typography";
+import {
+  colors,
+  fonts,
+  fontSizes,
+  lineHeights,
+  radius,
+  shadows,
+  textStyles,
+} from "@/src/config/theme";
+import { useAuthStore } from "@/src/store/useAuthStore";
+import {
+  userService,
+  UserProfileResponse,
+} from "@/src/services/user.service";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { ScrollView, StyleSheet, Text, Pressable, View } from "react-native";
+import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  Pressable,
+  View,
+} from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 type IoniconName = React.ComponentProps<typeof Ionicons>["name"];
-
-// ── Reusable row components ────────────────────────────────────────────────
 
 function SectionHeader({ title }: { title: string }) {
   return <Text style={styles.sectionHeader}>{title}</Text>;
@@ -19,11 +37,13 @@ function SettingRow({
   label,
   value,
   last = false,
+  onPress,
 }: {
   icon: IoniconName;
   label: string;
   value?: string;
   last?: boolean;
+  onPress?: () => void;
 }) {
   return (
     <Pressable
@@ -32,76 +52,174 @@ function SettingRow({
         !last && styles.rowBorder,
         pressed && styles.rowPressed,
       ]}
+      onPress={onPress}
     >
       <View style={styles.rowLeft}>
         <View style={styles.iconBox}>
-          <Ionicons name={icon} size={16} color={colors.primary} />
+          <Ionicons name={icon} size={15} color={colors.accent} />
         </View>
         <Text style={styles.rowLabel}>{label}</Text>
       </View>
       <View style={styles.rowRight}>
         {value ? <Text style={styles.rowValue}>{value}</Text> : null}
-        <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+        <Ionicons
+          name="chevron-forward"
+          size={14}
+          color={colors.textTertiary}
+        />
       </View>
     </Pressable>
   );
 }
 
-// ── Screen ─────────────────────────────────────────────────────────────────
-
 export default function ProfileScreen() {
+  const userId = useAuthStore((s) => s.userId);
+  const logout = useAuthStore((s) => s.logout);
+  const router = useRouter();
+
+  const [profile, setProfile] = useState<UserProfileResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!userId) return;
+    userService
+      .getProfile(userId)
+      .then(setProfile)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [userId]);
+
+  const initials = profile?.email?.charAt(0).toUpperCase() ?? "?";
+  const email = profile?.email ?? "";
+  const memberSince = profile?.createdAt
+    ? new Date(profile.createdAt).getFullYear().toString()
+    : "";
+
+  const cuisines =
+    profile?.preferences?.cuisine
+      .map((c) => c.charAt(0).toUpperCase() + c.slice(1))
+      .join(", ") ?? "\u2013";
+  const vibes =
+    profile?.preferences?.vibe
+      .map((v) => v.charAt(0).toUpperCase() + v.slice(1))
+      .join(", ") ?? "\u2013";
+  const budgetMap: Record<number, string> = {
+    1: "Under 200k",
+    2: "200k\u2013400k",
+    3: "400k+",
+    4: "600k+",
+  };
+  const budget =
+    profile?.preferences != null
+      ? (budgetMap[profile.preferences.budget] ?? "\u2013")
+      : "\u2013";
+
+  const handleLogout = () => {
+    logout();
+    router.replace("/login");
+  };
+
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
       >
-        {/* ── Avatar + identity ── */}
-        <View style={styles.avatarSection}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarInitials}>F</Text>
-          </View>
-          <View style={styles.identity}>
-            <Text style={styles.displayName}>Foodie</Text>
-            <View style={styles.levelBadge}>
-              <Text style={styles.levelText}>🌟 Food Explorer</Text>
-            </View>
-          </View>
-        </View>
+        {loading ? (
+          <ActivityIndicator
+            color={colors.accent}
+            style={{ marginTop: 48 }}
+          />
+        ) : (
+          <>
+            {/* Avatar + identity — hero element */}
+            <Animated.View
+              style={styles.avatarSection}
+              entering={FadeInDown.duration(450).delay(80)}
+            >
+              <View style={styles.avatar}>
+                <Text style={styles.avatarInitials}>{initials}</Text>
+              </View>
+              <View style={styles.identity}>
+                <Text style={styles.displayName}>{email}</Text>
+                {memberSince ? (
+                  <View style={styles.levelBadge}>
+                    <Text style={styles.levelText}>
+                      Member since {memberSince}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+            </Animated.View>
 
-        {/* ── Quick stats ── */}
-        <View style={styles.statsRow}>
-          {[
-            { value: "3",  label: "Saved" },
-            { value: "12", label: "Searches" },
-            { value: "2",  label: "This week" },
-          ].map((s) => (
-            <View key={s.label} style={styles.statCell}>
-              <Text style={styles.statValue}>{s.value}</Text>
-              <Text style={styles.statLabel}>{s.label}</Text>
-            </View>
-          ))}
-        </View>
+            <View style={styles.rule} />
 
-        {/* ── Preferences ── */}
-        <SectionHeader title="Preferences" />
-        <View style={styles.card}>
-          <SettingRow icon="wallet-outline"    label="Default budget"  value="Under 300k" />
-          <SettingRow icon="restaurant-outline" label="Cuisines"        value="Vietnamese, Japanese" />
-          <SettingRow icon="sparkles-outline"  label="Vibe"            value="Quiet, Cozy" />
-          <SettingRow icon="location-outline"  label="Location"        value="Hoan Kiem" last />
-        </View>
+            {/* Preferences */}
+            <Animated.View entering={FadeInDown.duration(400).delay(180)}>
+              <SectionHeader title="Preferences" />
+              <View style={styles.card}>
+                <SettingRow
+                  icon="wallet-outline"
+                  label="Budget"
+                  value={budget}
+                />
+                <SettingRow
+                  icon="restaurant-outline"
+                  label="Cuisines"
+                  value={cuisines}
+                />
+                <SettingRow
+                  icon="sparkles-outline"
+                  label="Vibe"
+                  value={vibes}
+                  last
+                />
+              </View>
+            </Animated.View>
 
-        {/* ── App settings ── */}
-        <SectionHeader title="App" />
-        <View style={styles.card}>
-          <SettingRow icon="notifications-outline" label="Notifications" value="On" />
-          <SettingRow icon="language-outline"      label="Language"      value="English" />
-          <SettingRow icon="information-circle-outline" label="About"    last />
-        </View>
+            {/* App settings */}
+            <Animated.View entering={FadeInDown.duration(400).delay(280)}>
+              <SectionHeader title="App" />
+              <View style={styles.card}>
+                <SettingRow
+                  icon="notifications-outline"
+                  label="Notifications"
+                  value="On"
+                />
+                <SettingRow
+                  icon="language-outline"
+                  label="Language"
+                  value="English"
+                />
+                <SettingRow
+                  icon="information-circle-outline"
+                  label="About"
+                  last
+                />
+              </View>
+            </Animated.View>
 
-        {/* Version footer */}
-        <Text style={styles.version}>Version 1.0.0 · AI Dining</Text>
+            {/* Logout */}
+            <Animated.View entering={FadeInDown.duration(350).delay(360)}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.logoutBtn,
+                  pressed && styles.logoutPressed,
+                ]}
+                onPress={handleLogout}
+              >
+                <Ionicons
+                  name="log-out-outline"
+                  size={17}
+                  color={colors.error}
+                />
+                <Text style={styles.logoutText}>Sign Out</Text>
+              </Pressable>
+            </Animated.View>
+
+            <Text style={styles.version}>Version 1.0.0</Text>
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -113,99 +231,76 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   content: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingBottom: 40,
-    gap: 12,
+    gap: 14,
   },
 
-  // ── Avatar section ──
+  // Avatar section — hero
   avatarSection: {
     flexDirection: "row",
     alignItems: "center",
     gap: 16,
-    paddingTop: 20,
-    paddingBottom: 8,
+    paddingTop: 24,
+    paddingBottom: 12,
   },
   avatar: {
-    width: 72,
-    height: 72,
+    width: 68,
+    height: 68,
     borderRadius: radius.full,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.accent,
     alignItems: "center",
     justifyContent: "center",
-    ...shadows.md,
   },
   avatarInitials: {
+    fontFamily: fonts.display.bold,
     fontSize: fontSizes.xxl,
-    fontWeight: fontWeights.extrabold,
-    color: "#fff",
+    color: colors.textInverse,
   },
   identity: {
     gap: 6,
+    flex: 1,
   },
   displayName: {
-    fontSize: fontSizes.xl,
-    fontWeight: fontWeights.extrabold,
+    fontFamily: fonts.body.bold,
+    fontSize: fontSizes.base,
     color: colors.textPrimary,
-    letterSpacing: -0.3,
+    letterSpacing: -0.2,
   },
   levelBadge: {
     alignSelf: "flex-start",
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.accentSoft,
     borderRadius: radius.full,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
   levelText: {
-    fontSize: fontSizes.sm,
-    fontWeight: fontWeights.semibold,
-    color: colors.primary,
-  },
-
-  // ── Stats row ──
-  statsRow: {
-    flexDirection: "row",
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
-    paddingVertical: 16,
-    ...shadows.sm,
-  },
-  statCell: {
-    flex: 1,
-    alignItems: "center",
-    gap: 3,
-  },
-  statValue: {
-    fontSize: fontSizes.xl,
-    fontWeight: fontWeights.extrabold,
-    color: colors.textPrimary,
-    letterSpacing: -0.3,
-  },
-  statLabel: {
+    fontFamily: fonts.body.semiBold,
     fontSize: fontSizes.xs,
-    fontWeight: fontWeights.medium,
-    color: colors.textTertiary,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
+    color: colors.accent,
+    letterSpacing: 0.3,
   },
 
-  // ── Section header ──
+  // Divider
+  rule: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border,
+  },
+
+  // Section header
   sectionHeader: {
-    fontSize: fontSizes.xs,
-    fontWeight: fontWeights.bold,
-    color: colors.textTertiary,
-    textTransform: "uppercase",
-    letterSpacing: 0.9,
-    marginTop: 8,
-    marginBottom: 2,
+    ...textStyles.label,
+    marginTop: 4,
+    marginBottom: 6,
   },
 
-  // ── Settings card ──
+  // Settings card
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.xl,
     overflow: "hidden",
-    ...shadows.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
   },
   row: {
     flexDirection: "row",
@@ -215,7 +310,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   rowBorder: {
-    borderBottomWidth: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.divider,
   },
   rowPressed: {
@@ -231,13 +326,13 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: radius.sm,
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.accentSoft,
     alignItems: "center",
     justifyContent: "center",
   },
   rowLabel: {
+    fontFamily: fonts.body.medium,
     fontSize: fontSizes.base,
-    fontWeight: fontWeights.medium,
     color: colors.textPrimary,
   },
   rowRight: {
@@ -246,19 +341,42 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   rowValue: {
+    fontFamily: fonts.body.regular,
     fontSize: fontSizes.sm,
     color: colors.textSecondary,
-    fontWeight: fontWeights.regular,
     lineHeight: fontSizes.sm * lineHeights.normal,
     maxWidth: 160,
     textAlign: "right",
   },
 
-  // ── Footer ──
+  // Logout
+  logoutBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    paddingVertical: 16,
+    marginTop: 4,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+  },
+  logoutPressed: {
+    opacity: 0.7,
+  },
+  logoutText: {
+    fontFamily: fonts.body.semiBold,
+    fontSize: fontSizes.base,
+    color: colors.error,
+  },
+
+  // Footer
   version: {
     textAlign: "center",
+    fontFamily: fonts.body.regular,
     fontSize: fontSizes.xs,
     color: colors.textTertiary,
-    marginTop: 16,
+    marginTop: 4,
   },
 });

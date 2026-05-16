@@ -1,6 +1,4 @@
-import { colors } from "@/src/theme/colors";
-import { radius } from "@/src/theme/radius";
-import { fontSizes, fontWeights } from "@/src/theme/typography";
+import { colors, fonts, fontSizes, radius } from "@/src/config/theme";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text } from "react-native";
 
@@ -70,12 +68,12 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
     paddingHorizontal: 13,
     paddingVertical: 8,
-    borderWidth: 1.5,
-    borderColor: colors.border,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.borderStrong,
   },
   chipActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
   },
   chipPressed: {
     opacity: 0.75,
@@ -84,8 +82,8 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   chipText: {
+    fontFamily: fonts.body.semiBold,
     fontSize: fontSizes.sm,
-    fontWeight: fontWeights.semibold,
     color: colors.textSecondary,
   },
   chipTextActive: {

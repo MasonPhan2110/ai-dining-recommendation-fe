@@ -1,8 +1,10 @@
-import { colors } from "@/src/theme/colors";
-import { radius } from "@/src/theme/radius";
-import { fontSizes, fontWeights } from "@/src/theme/typography";
-import { useRef } from "react";
-import { Animated, Pressable, StyleSheet, Text } from "react-native";
+import { colors, fonts, fontSizes, radius } from "@/src/config/theme";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 
 type Props = {
   label: string;
@@ -13,40 +15,33 @@ type Props = {
   softBg?: string;
 };
 
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
 export function ChoiceChip({
   label,
   emoji,
   selected,
   onPress,
-  accentColor = colors.primary,
-  softBg = colors.primarySoft,
+  accentColor = colors.accent,
+  softBg = colors.accentSoft,
 }: Props) {
-  const scale = useRef(new Animated.Value(1)).current;
+  const scale = useSharedValue(1);
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
 
   const handlePress = () => {
-    Animated.sequence([
-      Animated.spring(scale, {
-        toValue: 0.91,
-        useNativeDriver: true,
-        speed: 80,
-        bounciness: 0,
-      }),
-      Animated.spring(scale, {
-        toValue: 1,
-        useNativeDriver: true,
-        speed: 40,
-        bounciness: 14,
-      }),
-    ]).start();
+    scale.value = withTiming(0.94, { duration: 80 }, () => {
+      scale.value = withTiming(1, { duration: 150 });
+    });
     onPress();
   };
 
   return (
-    <Pressable onPress={handlePress}>
-      <Animated.View
+    <AnimatedPressable onPress={handlePress} style={animStyle}>
+      <View
         style={[
           styles.chip,
-          { transform: [{ scale }] },
           selected && {
             backgroundColor: softBg,
             borderColor: accentColor,
@@ -57,14 +52,16 @@ export function ChoiceChip({
         <Text
           style={[
             styles.label,
-            selected && { color: accentColor, fontWeight: fontWeights.bold },
+            selected && { color: accentColor },
           ]}
         >
           {label}
         </Text>
-        {selected ? <Text style={[styles.check, { color: accentColor }]}>✓</Text> : null}
-      </Animated.View>
-    </Pressable>
+        {selected ? (
+          <Text style={[styles.check, { color: accentColor }]}>{"\u2713"}</Text>
+        ) : null}
+      </View>
+    </AnimatedPressable>
   );
 }
 
@@ -77,19 +74,19 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
     paddingHorizontal: 16,
     paddingVertical: 11,
-    borderWidth: 1.5,
-    borderColor: colors.border,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.borderStrong,
   },
   emoji: {
     fontSize: 16,
   },
   label: {
+    fontFamily: fonts.body.semiBold,
     fontSize: fontSizes.sm,
-    fontWeight: fontWeights.semibold,
     color: colors.textSecondary,
   },
   check: {
+    fontFamily: fonts.body.bold,
     fontSize: fontSizes.sm,
-    fontWeight: fontWeights.bold,
   },
 });

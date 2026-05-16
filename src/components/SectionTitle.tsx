@@ -1,5 +1,4 @@
-import { colors } from "@/src/theme/colors";
-import { fontSizes, fontWeights } from "@/src/theme/typography";
+import { colors, fonts, fontSizes, textStyles } from "@/src/config/theme";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 type Props = {
@@ -36,16 +35,15 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   icon: {
-    fontSize: 16,
+    fontSize: 14,
+    color: colors.accent,
   },
   title: {
-    fontSize: fontSizes.md,
-    fontWeight: fontWeights.bold,
-    color: colors.textPrimary,
+    ...textStyles.headingSmall,
   },
   action: {
+    fontFamily: fonts.body.semiBold,
     fontSize: fontSizes.sm,
-    fontWeight: fontWeights.semibold,
-    color: colors.primary,
+    color: colors.accent,
   },
 });

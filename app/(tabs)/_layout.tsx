@@ -1,9 +1,10 @@
+import { colors, fonts, fontSizes } from "@/src/config/theme";
+import { useAppStore } from "@/src/store/useAppStore";
 import { useAuthStore } from "@/src/store/useAuthStore";
-import { colors } from "@/src/theme/colors";
-import { fontSizes, fontWeights } from "@/src/theme/typography";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Redirect, Tabs } from "expo-router";
-import { Platform } from "react-native";
+import { useEffect } from "react";
+import { Platform, StyleSheet } from "react-native";
 
 type IoniconName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -19,13 +20,19 @@ function TabIcon({
   focused: boolean;
 }) {
   return (
-    <Ionicons name={focused ? activeName : name} size={24} color={color} />
+    <Ionicons name={focused ? activeName : name} size={22} color={color} />
   );
 }
 
 export default function TabsLayout() {
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
   const surveyCompleted = useAuthStore((s) => s.surveyCompleted);
+  const userId = useAuthStore((s) => s.userId);
+  const loadSaved = useAppStore((s) => s.loadSaved);
+
+  useEffect(() => {
+    if (isLoggedIn && userId) loadSaved(userId);
+  }, [isLoggedIn, userId]);
 
   if (!isLoggedIn) return <Redirect href="/login" />;
   if (!surveyCompleted) return <Redirect href="/survey" />;
@@ -34,25 +41,10 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.primary,
+        tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: colors.textTertiary,
-        tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopWidth: 0,
-          height: Platform.OS === "ios" ? 80 : 64,
-          paddingTop: 10,
-          paddingBottom: Platform.OS === "ios" ? 24 : 10,
-          shadowColor: "#2C1810",
-          shadowOffset: { width: 0, height: -3 },
-          shadowOpacity: 0.07,
-          shadowRadius: 12,
-          elevation: 12,
-        },
-        tabBarLabelStyle: {
-          fontSize: fontSizes.xs,
-          fontWeight: fontWeights.semibold,
-          marginTop: 2,
-        },
+        tabBarStyle: styles.tabBar,
+        tabBarLabelStyle: styles.tabBarLabel,
       }}
     >
       <Tabs.Screen
@@ -77,6 +69,20 @@ export default function TabsLayout() {
             <TabIcon
               name="search-outline"
               activeName="search"
+              color={color}
+              focused={focused}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="ai-chat"
+        options={{
+          title: "AI Picks",
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon
+              name="sparkles-outline"
+              activeName="sparkles"
               color={color}
               focused={focused}
             />
@@ -114,3 +120,22 @@ export default function TabsLayout() {
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  tabBar: {
+    backgroundColor: colors.surface,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    height: Platform.OS === "ios" ? 82 : 64,
+    paddingTop: 8,
+    paddingBottom: Platform.OS === "ios" ? 28 : 10,
+    elevation: 0,
+    shadowOpacity: 0,
+  },
+  tabBarLabel: {
+    fontFamily: fonts.body.semiBold,
+    fontSize: fontSizes.xs,
+    letterSpacing: 0.3,
+    marginTop: 2,
+  },
+});

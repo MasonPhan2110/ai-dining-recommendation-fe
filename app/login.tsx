@@ -4,7 +4,7 @@ import { colors } from "@/src/theme/colors";
 import { radius } from "@/src/theme/radius";
 import { shadows } from "@/src/theme/shadows";
 import { fontSizes, fontWeights, lineHeights } from "@/src/theme/typography";
-import { useRouter } from "expo-router";
+import { Href, useRouter } from "expo-router";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -18,28 +18,61 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+type Mode = "login" | "signup";
+
+const COPY: Record<Mode, { heading: string; subheading: string; cta: string }> =
+  {
+    login: {
+      heading: "Welcome back",
+      subheading: "Sign in to continue",
+      cta: "Sign In",
+    },
+    signup: {
+      heading: "Create account",
+      subheading: "Join AI Dining to get started",
+      cta: "Sign Up",
+    },
+  };
+
 export default function LoginScreen() {
   const login = useAuthStore((s) => s.login);
+  const signup = useAuthStore((s) => s.signup);
   const router = useRouter();
+
+  const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSignIn = () => {
+  const switchMode = (next: Mode) => {
+    setMode(next);
+    setError("");
+  };
+
+  const handleSubmit = async () => {
     if (!email.trim() || !password.trim()) {
       setError("Please enter your email and password.");
       return;
     }
     setError("");
     setLoading(true);
-    // Mock auth — auto-succeeds after a short delay
-    setTimeout(() => {
-      setLoading(false);
-      login(email.trim());
-      router.replace("/survey");
-    }, 800);
+
+    const action = mode === "login" ? login : signup;
+    const err = await action(email.trim(), password);
+
+    setLoading(false);
+    if (err) {
+      setError(err);
+    } else {
+      const dest = useAuthStore.getState().surveyCompleted
+        ? ("/(tabs)" as Href)
+        : ("/survey" as Href);
+      router.replace(dest);
+    }
   };
+
+  const { heading, subheading, cta } = COPY[mode];
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
@@ -61,10 +94,42 @@ export default function LoginScreen() {
             <Text style={styles.tagline}>Discover your perfect meal</Text>
           </View>
 
+          {/* ── Mode toggle ── */}
+          <View style={styles.toggle}>
+            <Pressable
+              style={[styles.toggleBtn, mode === "login" && styles.toggleBtnActive]}
+              onPress={() => switchMode("login")}
+            >
+              <Text
+                style={[
+                  styles.toggleText,
+                  mode === "login" && styles.toggleTextActive,
+                ]}
+              >
+                Sign In
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[styles.toggleBtn, mode === "signup" && styles.toggleBtnActive]}
+              onPress={() => switchMode("signup")}
+            >
+              <Text
+                style={[
+                  styles.toggleText,
+                  mode === "signup" && styles.toggleTextActive,
+                ]}
+              >
+                Sign Up
+              </Text>
+            </Pressable>
+          </View>
+
           {/* ── Form card ── */}
           <View style={styles.card}>
-            <Text style={styles.heading}>Welcome back</Text>
-            <Text style={styles.subheading}>Sign in to continue</Text>
+            <View style={styles.cardHeader}>
+              <Text style={styles.heading}>{heading}</Text>
+              <Text style={styles.subheading}>{subheading}</Text>
+            </View>
 
             <View style={styles.fields}>
               <AuthInput
@@ -82,7 +147,7 @@ export default function LoginScreen() {
                 onChangeText={setPassword}
                 isPassword
                 returnKeyType="done"
-                onSubmitEditing={handleSignIn}
+                onSubmitEditing={handleSubmit}
               />
             </View>
 
@@ -90,23 +155,36 @@ export default function LoginScreen() {
 
             <Pressable
               style={({ pressed }) => [
-                styles.signInBtn,
+                styles.submitBtn,
                 pressed && styles.btnPressed,
                 loading && styles.btnLoading,
               ]}
-              onPress={handleSignIn}
+              onPress={handleSubmit}
               disabled={loading}
             >
               {loading ? (
                 <ActivityIndicator color="#fff" size="small" />
               ) : (
-                <Text style={styles.signInText}>Sign In</Text>
+                <Text style={styles.submitText}>{cta}</Text>
               )}
             </Pressable>
+          </View>
 
-            <Text style={styles.hint}>
-              Any email + password works — this is a demo app.
+          {/* ── Footer switch ── */}
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>
+              {mode === "login"
+                ? "Don't have an account?"
+                : "Already have an account?"}
             </Text>
+            <Pressable
+              onPress={() => switchMode(mode === "login" ? "signup" : "login")}
+              hitSlop={8}
+            >
+              <Text style={styles.footerLink}>
+                {mode === "login" ? "Sign Up" : "Sign In"}
+              </Text>
+            </Pressable>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -131,8 +209,8 @@ const styles = StyleSheet.create({
   // ── Hero ──
   hero: {
     alignItems: "center",
-    paddingTop: 48,
-    paddingBottom: 40,
+    paddingTop: 40,
+    paddingBottom: 28,
     gap: 10,
   },
   logoCircle: {
@@ -161,6 +239,34 @@ const styles = StyleSheet.create({
     lineHeight: fontSizes.base * lineHeights.normal,
   },
 
+  // ── Mode toggle ──
+  toggle: {
+    flexDirection: "row",
+    backgroundColor: colors.divider,
+    borderRadius: radius.lg,
+    padding: 4,
+    marginBottom: 16,
+  },
+  toggleBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: radius.md,
+    alignItems: "center",
+  },
+  toggleBtnActive: {
+    backgroundColor: colors.surface,
+    ...shadows.sm,
+  },
+  toggleText: {
+    fontSize: fontSizes.sm,
+    fontWeight: fontWeights.semibold,
+    color: colors.textTertiary,
+  },
+  toggleTextActive: {
+    color: colors.textPrimary,
+    fontWeight: fontWeights.bold,
+  },
+
   // ── Card ──
   card: {
     backgroundColor: colors.surface,
@@ -168,6 +274,9 @@ const styles = StyleSheet.create({
     padding: 24,
     gap: 16,
     ...shadows.md,
+  },
+  cardHeader: {
+    gap: 4,
   },
   heading: {
     fontSize: fontSizes.xl,
@@ -179,7 +288,6 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.base,
     color: colors.textSecondary,
     fontWeight: fontWeights.regular,
-    marginTop: -8,
   },
   fields: {
     gap: 12,
@@ -190,8 +298,8 @@ const styles = StyleSheet.create({
     fontWeight: fontWeights.medium,
   },
 
-  // ── CTA ──
-  signInBtn: {
+  // ── Submit button ──
+  submitBtn: {
     backgroundColor: colors.primary,
     borderRadius: radius.lg,
     height: 54,
@@ -206,18 +314,28 @@ const styles = StyleSheet.create({
   btnLoading: {
     opacity: 0.8,
   },
-  signInText: {
+  submitText: {
     fontSize: fontSizes.base,
     fontWeight: fontWeights.bold,
     color: "#fff",
     letterSpacing: 0.2,
   },
 
-  // ── Footer hint ──
-  hint: {
-    fontSize: fontSizes.xs,
-    color: colors.textTertiary,
-    textAlign: "center",
-    lineHeight: fontSizes.xs * lineHeights.normal,
+  // ── Footer ──
+  footer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 20,
+  },
+  footerText: {
+    fontSize: fontSizes.sm,
+    color: colors.textSecondary,
+  },
+  footerLink: {
+    fontSize: fontSizes.sm,
+    fontWeight: fontWeights.bold,
+    color: colors.primary,
   },
 });

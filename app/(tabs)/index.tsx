@@ -1,29 +1,61 @@
+import { LocationPill } from "@/src/components/LocationPill";
+import { PermissionBanner } from "@/src/components/PermissionBanner";
 import { QuickChips } from "@/src/components/QuickChips";
 import { RestaurantCard } from "@/src/components/RestaurantCard";
 import { SearchBox } from "@/src/components/SearchBox";
 import { SectionTitle } from "@/src/components/SectionTitle";
+import {
+  colors,
+  fonts,
+  fontSizes,
+  radius,
+  textStyles,
+} from "@/src/config/theme";
+import { useLocation } from "@/src/hooks/useLocation";
 import { useAppStore } from "@/src/store/useAppStore";
-import { colors } from "@/src/theme/colors";
-import { radius } from "@/src/theme/radius";
-import { fontSizes, fontWeights, lineHeights } from "@/src/theme/typography";
+import { useAuthStore } from "@/src/store/useAuthStore";
 import { Restaurant } from "@/src/types/restaurant";
-import { useCallback } from "react";
-import { FlatList, StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  FlatList,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const getGreeting = (): { text: string; emoji: string } => {
+const getGreeting = (): string => {
   const hour = new Date().getHours();
-  if (hour < 12) return { text: "Good morning", emoji: "☀️" };
-  if (hour < 17) return { text: "Good afternoon", emoji: "🌤️" };
-  return { text: "Good evening", emoji: "🌙" };
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
 };
 
 export default function HomeScreen() {
   const query = useAppStore((s) => s.query);
   const setQuery = useAppStore((s) => s.setQuery);
   const restaurants = useAppStore((s) => s.restaurants);
+  const isLoading = useAppStore((s) => s.isLoading);
+  const error = useAppStore((s) => s.error);
+  const fetchFeed = useAppStore((s) => s.fetchFeed);
+  const fetchNextPage = useAppStore((s) => s.fetchNextPage);
+  const isLoadingMore = useAppStore((s) => s.isLoadingMore);
 
-  // Stable callbacks — prevent FlatList from re-rendering items on every parent render
+  const userId = useAuthStore((s) => s.userId);
+  const { location, isPermissionDenied } = useLocation();
+
+  useEffect(() => {
+    fetchFeed({
+      query,
+      userId,
+      lat: location?.latitude,
+      lng: location?.longitude,
+    });
+  }, [query, userId, location?.latitude, location?.longitude, fetchFeed]);
+
   const renderItem = useCallback(
     ({ item, index }: { item: Restaurant; index: number }) => (
       <RestaurantCard item={item} index={index} />
@@ -31,55 +63,119 @@ export default function HomeScreen() {
     [],
   );
 
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchFeed({
+      query,
+      userId,
+      lat: location?.latitude,
+      lng: location?.longitude,
+    });
+    setRefreshing(false);
+  }, [fetchFeed, query, userId, location?.latitude, location?.longitude]);
+
   const handleChipSelect = useCallback(
     (value: string) => setQuery(value),
     [setQuery],
   );
 
-  const { text: greetText, emoji: greetEmoji } = getGreeting();
+  const greetText = getGreeting();
+
+  const sectionTitle = query.trim()
+    ? `Results for \u201C${query}\u201D`
+    : location
+      ? "AI picks for you"
+      : "Popular near you";
 
   return (
-    // edges={["top"]} — tab bar handles bottom safe area itself
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <FlatList
         data={restaurants}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={colors.accent}
+            colors={[colors.accent]}
+          />
+        }
         ListHeaderComponent={
           <View style={styles.header}>
-            {/* Location pill */}
-            <View style={styles.locationPill}>
-              <Text style={styles.locationDot}>📍</Text>
-              <Text style={styles.locationText}>Hoan Kiem, Hanoi</Text>
-            </View>
+            {/* Location pill — staggered entrance */}
+            <Animated.View entering={FadeInDown.duration(400).delay(80)}>
+              <LocationPill />
+            </Animated.View>
 
-            {/* Greeting + headline */}
-            <View style={styles.heroText}>
-              <Text style={styles.greeting}>
-                {greetText} {greetEmoji}
-              </Text>
+            {isPermissionDenied && (
+              <Animated.View entering={FadeInDown.duration(350).delay(120)}>
+                <PermissionBanner />
+              </Animated.View>
+            )}
+
+            {/* Hero — the single dominant element */}
+            <Animated.View
+              style={styles.heroText}
+              entering={FadeInDown.duration(500).delay(160)}
+            >
+              <Text style={styles.greeting}>{greetText}</Text>
               <Text style={styles.headline}>
                 {"What are you\ncraving today?"}
               </Text>
-            </View>
+            </Animated.View>
 
-            {/* AI search bar */}
-            <SearchBox value={query} onChangeText={setQuery} />
+            {/* Search + chips */}
+            <Animated.View entering={FadeInDown.duration(400).delay(280)}>
+              <SearchBox value={query} onChangeText={setQuery} />
+            </Animated.View>
 
-            {/* Quick filter chips */}
-            <QuickChips onSelect={handleChipSelect} />
+            <Animated.View entering={FadeInDown.duration(400).delay(360)}>
+              <QuickChips onSelect={handleChipSelect} />
+            </Animated.View>
+
+            {/* Divider rule */}
+            <View style={styles.rule} />
 
             {/* Section header */}
-            <View style={styles.sectionRow}>
-              <SectionTitle title="AI picks for you" icon="✦" />
-              <Text style={styles.resultCount}>{restaurants.length} spots</Text>
-            </View>
+            <Animated.View
+              style={styles.sectionRow}
+              entering={FadeInUp.duration(350).delay(420)}
+            >
+              <SectionTitle title={sectionTitle} icon="✦" />
+              {isLoading ? (
+                <ActivityIndicator size="small" color={colors.accent} />
+              ) : (
+                <Text style={styles.resultCount}>
+                  {restaurants.length} spots
+                </Text>
+              )}
+            </Animated.View>
+
+            {error ? (
+              <View style={styles.errorBanner}>
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            ) : null}
           </View>
         }
         renderItem={renderItem}
-        ItemSeparatorComponent={() => <View style={{ height: 14 }} />}
-        ListFooterComponent={<View style={{ height: 40 }} />}
+        ItemSeparatorComponent={() => <View style={{ height: 16 }} />}
+        onEndReached={fetchNextPage}
+        onEndReachedThreshold={0.4}
+        ListFooterComponent={
+          isLoadingMore ? (
+            <ActivityIndicator
+              color={colors.accent}
+              style={{ paddingVertical: 24 }}
+            />
+          ) : (
+            <View style={{ height: 40 }} />
+          )
+        }
       />
     </SafeAreaView>
   );
@@ -91,62 +187,53 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   content: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingBottom: 20,
   },
   header: {
     gap: 18,
     paddingTop: 16,
-    marginBottom: 4,
+    marginBottom: 8,
   },
-
-  locationPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    alignSelf: "flex-start",
-    backgroundColor: colors.surface,
-    borderRadius: radius.full,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  locationDot: {
-    fontSize: 12,
-  },
-  locationText: {
-    fontSize: fontSizes.sm,
-    fontWeight: fontWeights.semibold,
-    color: colors.textSecondary,
-  },
-
   heroText: {
-    gap: 6,
+    gap: 4,
+    paddingTop: 8,
   },
   greeting: {
-    fontSize: fontSizes.base,
-    fontWeight: fontWeights.medium,
-    color: colors.textSecondary,
-    letterSpacing: 0.1,
+    fontFamily: fonts.body.medium,
+    fontSize: fontSizes.sm,
+    color: colors.textTertiary,
+    letterSpacing: 0.8,
+    textTransform: "uppercase" as const,
   },
   headline: {
-    fontSize: fontSizes.xxxl,
-    fontWeight: fontWeights.black,
-    color: colors.textPrimary,
-    lineHeight: fontSizes.xxxl * lineHeights.tight,
-    letterSpacing: -0.5,
+    ...textStyles.displayMedium,
   },
-
+  rule: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border,
+    marginVertical: 2,
+  },
   sectionRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginTop: 6,
   },
   resultCount: {
+    fontFamily: fonts.body.medium,
     fontSize: fontSizes.sm,
-    fontWeight: fontWeights.medium,
     color: colors.textTertiary,
+  },
+  errorBanner: {
+    backgroundColor: colors.accentSoft,
+    borderRadius: radius.md,
+    padding: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.accentMuted,
+  },
+  errorText: {
+    fontFamily: fonts.body.medium,
+    fontSize: fontSizes.sm,
+    color: colors.error,
   },
 });
