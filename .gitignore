@@ -41,3 +41,8 @@ app-example
 # generated native folders
 /ios
 /android
+
+# Tooling artifacts
+.agents/
+.ralph-progress.md
+skills-lock.json
